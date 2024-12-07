@@ -1,0 +1,336 @@
+<html><head><base href="/">
+<style>
+body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: black; }
+.game-container { position: relative; width: 800px; height: 600px; }
+#background { width: 100%; height: 100%; object-fit: cover; }
+#score { position: absolute; top: 10px; right: 10px; color: white; font-size: 24px; background: rgba(0,0,0,0.7); padding: 10px; }
+.instruction { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; text-align: center; background: rgba(0,0,0,0.7); padding: 20px; }
+.seatbelt { position: absolute; cursor: pointer; background: rgba(255,255,0,0.3); width: 50px; height: 100px; }
+.fire { position: absolute; width: 100px; height: 150px; display: none; }
+#extinguisher { position: absolute; width: 150px; cursor: pointer; display: none; }
+#breaker { position: absolute; width: 40px; cursor: pointer; display: none; }
+.window { position: absolute; width: 100px; height: 150px; background: rgba(0,255,255,0.2); display: none; cursor: pointer; }
+.door { position: absolute; width: 80px; height: 200px; background: rgba(0,255,0,0.2); display: none; cursor: pointer; }
+#restart-button { 
+    position: absolute; 
+    top: 60%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    padding: 10px 20px; 
+    font-size: 20px; 
+    background: #4CAF50; 
+    color: white; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    display: none;
+}
+#restart-button:hover {
+    background: #45a049;
+}
+
+@keyframes flame {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.foam { 
+    position: absolute; 
+    width: 10px; 
+    height: 10px; 
+    background: white; 
+    border-radius: 50%;
+    animation: foam 1s forwards;
+}
+
+@keyframes foam {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+.broken { 
+    background: none !important;
+    position: relative;
+}
+
+.broken::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, transparent 0%, rgba(255,255,255,0.2) 100%);
+    pointer-events: none;
+}
+
+.window.highlight {
+    border: 2px solid yellow;
+}
+
+.feedback-message {
+    position: absolute;
+    color: white;
+    background: rgba(0,0,0,0.7);
+    padding: 5px 10px;
+    border-radius: 5px;
+    display: none;
+}
+</style>
+</head>
+<body>
+<div class="game-container">
+    <img id="background" src="car_game.png" alt="遊覽車內部場景">
+    <div id="score">分數: 0</div>
+    <div class="instruction">按下空白鍵開始遊戲</div>
+    <button id="restart-button">再玩一次</button>
+    
+    <div class="seatbelt" style="left: 200px; top: 400px; display: none;"></div>
+    
+    <svg class="fire" style="left: 400px; top: 200px;">
+        <path d="M10,150 Q50,0 90,150" fill="red" style="animation: flame 1s infinite;">
+            <animate attributeName="d" dur="1s" repeatCount="indefinite"
+                values="M10,150 Q50,0 90,150;M10,150 Q50,50 90,150;M10,150 Q50,0 90,150"/>
+        </path>
+    </svg>
+    
+    <img id="extinguisher" src="firedistinggush.png" alt="滅火器">
+    <img id="breaker" src="breaker.png" alt="擊破器">
+    
+    <div class="window" style="left: 200px; top: 150px;"></div>
+    <div class="window" style="left: 500px; top: 150px;"></div>
+    
+    <div class="door" style="left: 0px; top: 400px;"></div>
+    <div class="door" style="right: 200px; top: 140px;"></div>
+    <div class="feedback-message"></div>
+    <audio id="breakSound" src="Glass Breaking.wav"></audio>
+</div>
+
+<script>
+let currentLevel = 0;
+let score = 0;
+let isDragging = false;
+let dragItem = null;
+let selectedWindow = null;
+let fireHits = 0;
+
+function resetGame() {
+    currentLevel = 0;
+    score = 0;
+    fireHits = 0;
+    isDragging = false;
+    dragItem = null;
+    selectedWindow = null;
+    
+    // Reset UI elements
+    document.querySelector('.instruction').textContent = '按下空白鍵開始遊戲';
+    document.querySelector('#score').textContent = '分數: 0';
+    document.querySelector('.seatbelt').style.display = 'none';
+    document.querySelector('.fire').style.display = 'none';
+    document.querySelector('#extinguisher').style.display = 'none';
+    document.querySelector('#breaker').style.display = 'none';
+    document.querySelector('#restart-button').style.display = 'none';
+    
+    // Reset windows
+    document.querySelectorAll('.window').forEach(w => {
+        w.style.display = 'none';
+        w.classList.remove('broken');
+        w.classList.remove('highlight');
+    });
+    
+    // Reset doors
+    document.querySelectorAll('.door').forEach(d => {
+        d.style.display = 'none';
+    });
+    
+    // Remove any foam elements
+    document.querySelectorAll('.foam').forEach(foam => foam.remove());
+}
+
+document.querySelector('#restart-button').addEventListener('click', resetGame);
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        if (currentLevel === 0) {
+            startLevel1();
+        } else if (currentLevel === 2) {
+            createFoam(dragItem);
+        } else if (currentLevel === 3) {
+            breakWindow();
+        }
+    }
+});
+
+function startLevel1() {
+    currentLevel = 1;
+    document.querySelector('.instruction').textContent = '請繫上安全帶';
+    document.querySelector('.seatbelt').style.display = 'block';
+}
+
+function startLevel2() {
+    currentLevel = 2;
+    fireHits = 0;
+    document.querySelector('.instruction').textContent = '車上起火了！請使用滅火器滅火(需要按空白鍵滅火5次以上)';
+    document.querySelector('.fire').style.display = 'block';
+    document.querySelector('#extinguisher').style.display = 'block';
+    document.querySelector('#extinguisher').style.left = '0px';
+    document.querySelector('#extinguisher').style.top = '300px';
+    setupDraggable(document.querySelector('#extinguisher'));
+}
+
+function startLevel3() {
+    currentLevel = 3;
+    document.querySelector('.instruction').textContent = '選擇窗戶並按下空白鍵使用安全錘擊破窗戶';
+    document.querySelector('#breaker').style.display = 'block';
+    document.querySelector('#breaker').style.left = '0px';
+    document.querySelector('#breaker').style.top = '300px';
+    document.querySelectorAll('.foam').forEach(foam => foam.remove());
+    document.querySelectorAll('.window').forEach(w => {
+        w.style.display = 'block';
+        w.addEventListener('click', () => {
+            if (currentLevel === 3) {
+                if (selectedWindow) {
+                    selectedWindow.classList.remove('highlight');
+                }
+                selectedWindow = w;
+                w.classList.add('highlight');
+                showFeedback('按下空白鍵擊破窗戶', w);
+            }
+        });
+    });
+    setupDraggable(document.querySelector('#breaker'));
+}
+
+function showFeedback(message, element) {
+    const feedback = document.querySelector('.feedback-message');
+    feedback.textContent = message;
+    feedback.style.display = 'block';
+    feedback.style.left = (element.offsetLeft + element.offsetWidth/2) + 'px';
+    feedback.style.top = (element.offsetTop - 30) + 'px';
+    
+    setTimeout(() => {
+        feedback.style.display = 'none';
+    }, 2000);
+}
+
+function startLevel4() {
+    currentLevel = 4;
+    document.querySelector('.instruction').textContent = '請從車門逃生';
+    document.querySelectorAll('.door').forEach(d => d.style.display = 'block');
+}
+
+document.querySelector('.seatbelt').addEventListener('click', () => {
+    if (currentLevel === 1) {
+        score += 30;
+        updateScore();
+        startLevel2();
+    }
+});
+
+function setupDraggable(element) {
+    element.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragItem = element;
+        const rect = element.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - element.width/2;
+        const offsetY = e.clientY - rect.top - element.height/2;
+        
+        element.style.left = (e.clientX - element.width/2) + 'px';
+        element.style.top = (e.clientY - element.height/2) + 'px';
+        
+        e.preventDefault();
+    });
+}
+
+document.addEventListener('mousemove', (e) => {
+    if (isDragging && dragItem) {
+        const container = document.querySelector('.game-container');
+        const rect = container.getBoundingClientRect();
+        
+        let newX = e.clientX - rect.left - dragItem.width/2;
+        let newY = e.clientY - rect.top - dragItem.height/2;
+        
+        newX = Math.max(0, Math.min(newX, container.offsetWidth - dragItem.width));
+        newY = Math.max(0, Math.min(newY, container.offsetHeight - dragItem.height));
+        
+        dragItem.style.left = newX + 'px';
+        dragItem.style.top = newY + 'px';
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+function createFoam(extinguisher) {
+    if (currentLevel === 2 && extinguisher) {
+        const foam = document.createElement('div');
+        foam.className = 'foam';
+        foam.style.left = parseInt(extinguisher.style.left) + 'px';
+        foam.style.top = parseInt(extinguisher.style.top) + 'px';
+        document.querySelector('.game-container').appendChild(foam);
+        
+        setTimeout(() => foam.remove(), 1000);
+        
+        const fire = document.querySelector('.fire');
+        const fireRect = fire.getBoundingClientRect();
+        const extRect = extinguisher.getBoundingClientRect();
+        
+        if (Math.abs(fireRect.left - extRect.left) < 100 && Math.abs(fireRect.top - extRect.top) < 100) {
+            fireHits++;
+            if (fireHits >= 5) {
+                fire.style.display = 'none';
+                document.querySelectorAll('.foam').forEach(foam => foam.remove());
+                score += 30;
+                updateScore();
+                startLevel3();
+            }
+        }
+    }
+}
+
+function breakWindow() {
+    if (currentLevel === 3 && selectedWindow) {
+        const breaker = document.querySelector('#breaker');
+        const breakerRect = breaker.getBoundingClientRect();
+        const windowRect = selectedWindow.getBoundingClientRect();
+        
+        if (Math.abs(windowRect.left - breakerRect.left) < 100 && Math.abs(windowRect.top - breakerRect.top) < 100) {
+            const breakSound = document.getElementById('breakSound');
+            breakSound.currentTime = 0;
+            breakSound.play();
+            selectedWindow.classList.add('broken');
+            selectedWindow.classList.remove('highlight');
+            showFeedback('窗戶已擊破！', selectedWindow);
+            score += 20;
+            updateScore();
+            let allBroken = true;
+            document.querySelectorAll('.window').forEach(w => {
+                if (!w.classList.contains('broken')) {
+                    allBroken = false;
+                }
+            });
+            if (allBroken) {
+                startLevel4();
+            }
+        }
+    }
+}
+
+document.querySelectorAll('.door').forEach(door => {
+    door.addEventListener('click', () => {
+        if (currentLevel === 4) {
+            score += 20;
+            updateScore();
+            document.querySelector('.instruction').textContent = `遊戲結束！總分：${score}`;
+            document.querySelector('#restart-button').style.display = 'block';
+        }
+    });
+});
+
+function updateScore() {
+    document.querySelector('#score').textContent = `分數: ${score}`;
+}
+</script>
+</body></html>
