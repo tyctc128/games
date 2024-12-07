@@ -1,0 +1,541 @@
+<html><head><base href="." /><title>Math Shooting Game</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+}
+
+.cannon {
+  width: 60px;
+  height: 60px;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+}
+
+.barrel {
+  width: 20px;
+  height: 40px;
+  background: #333;
+  position: absolute;
+  left: 20px;
+  top: 0;
+  transform-origin: bottom center;
+}
+
+.base {
+  width: 60px;
+  height: 30px;
+  background: #555;
+  position: absolute;
+  bottom: 0;
+  border-radius: 10px;
+}
+
+.balloon {
+  width: 60px;
+  height: 80px;
+  position: absolute;
+  cursor: pointer;
+  text-align: center;
+  line-height: 80px;
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  animation: float 8s infinite alternate ease-in-out;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(50px, -30px); }
+  50% { transform: translate(-30px, -50px); }
+  75% { transform: translate(30px, 20px); }
+  100% { transform: translate(-50px, -20px); }
+}
+
+.bullet {
+  width: 10px;
+  height: 10px;
+  background: #000;
+  border-radius: 50%;
+  position: absolute;
+  z-index: 1000;
+}
+
+#question {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  background: rgba(255,255,255,0.8);
+  padding: 10px 20px;
+  border-radius: 10px;
+  display: none;
+}
+
+#score {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 24px;
+  color: #333;
+  display: none;
+}
+
+#ammo {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  font-size: 20px;
+  color: #333;
+  display: none;
+}
+
+#message {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  color: #ff0000;
+  background: rgba(255,255,255,0.8);
+  padding: 10px 20px;
+  border-radius: 10px;
+  display: none;
+}
+
+#instructions {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+#startButton {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 18px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background 0.3s;
+}
+
+#startButton:hover {
+  background: #45a049;
+}
+
+/* Adding responsive controls */
+.controls {
+  position: fixed;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  display: none;
+}
+
+.direction-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 20px;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.fire-btn {
+  background: rgba(255, 0, 0, 0.6);
+}
+
+@media (max-width: 768px) {
+  .controls {
+    display: flex;
+  }
+  
+  .balloon {
+    font-size: 16px;
+    width: 50px;
+    height: 70px;
+    line-height: 70px;
+  }
+  
+  #instructions {
+    width: 90%;
+    max-width: 400px;
+    font-size: 14px;
+  }
+  
+  #instructions h1 {
+    font-size: 24px;
+  }
+  
+  #instructions h2 {
+    font-size: 18px;
+  }
+  
+  .cannon {
+    transform: translateX(-50%) scale(0.8);
+  }
+}
+</style>
+</head>
+<body>
+<div id="instructions">
+  <h1>數學射擊遊戲</h1>
+  <h2>遊戲規則：</h2>
+  <ul style="text-align: left;">
+    <li>每題會出現二位數乘以二位數的乘法題目</li>
+    <li>三個漂浮的氣球中有一個是正確答案</li>
+    <li>每題有兩次射擊機會</li>
+    <li>射中正確答案得10分</li>
+    <li>共有10題</li>
+  </ul>
+  <h2>操作方式：</h2>
+  <ul style="text-align: left;">
+    <li>← → 方向鍵：控制大砲方向</li>
+    <li>空白鍵：發射砲彈</li>
+  </ul>
+  <button id="startButton">開始遊戲</button>
+</div>
+
+<div id="question"></div>
+<div id="score">Score: 0</div>
+<div id="ammo">Ammo: 2</div>
+<div id="message"></div>
+<div class="cannon">
+  <div class="barrel"></div>
+  <div class="base"></div>
+</div>
+
+<!-- Add mobile controls -->
+<div class="controls">
+  <div class="direction-buttons">
+    <button class="control-btn" id="leftBtn">←</button>
+    <button class="control-btn" id="rightBtn">→</button>
+  </div>
+  <button class="control-btn fire-btn" id="fireBtn">🚀</button>
+</div>
+
+<audio id="popSound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAUAAAiSAAYGBgYJCQkJCQwMDAwMDw8PDw8SUlJSUlVVVVVVWFhYWFhbW1tbW15eXl5eYaGhoaGkpKSkpKenp6enqqqqqqqqtra2trbDw8PDw8/Pz8/Pz829vb29vn5+fn5/Pz8/Pz8//////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAAIkjPczWVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//PKGAAP8AAAGkAAAAIAAANIAAAAQAYFBQUFCgoKCgoFBQUFBQUKCgoKCgUFBQUFBQoKCgoKBQUFBQUFCgoKCgoAAAAA/////wAAAAAAAAAAAAAAAAAAAAD/8xJEP4AAAR0eUYUYYR0eUYUYQA4IAAA0AABNIQQGToEADmE9PQRg7g7vBHAQMHcZw7vBHd4QQQQQQQQQQQQQQQAAABQUFBUYGBcVEhQXGBUVFhYXGBYY//MSRD+GBAAYYgAAAAAYYgAAAABgYGBfXFxYWFRQVFhYVFhYVFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhY//MSRD+DwAAC+AAAAAAL4AAAAABYWFRQUFBYWFRUVFBQUFBQUFBQUFBFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQQ" type="audio/mpeg"></audio>
+
+<script>
+let score = 0;
+let currentQuestion = 1;
+let ammo = 2;
+let correctAnswer = 0;
+let canShoot = true;
+let balloons = [];
+let activeBullets = [];
+const popSound = document.getElementById('popSound');
+const messageEl = document.getElementById('message');
+let gameStarted = false;
+
+document.getElementById('startButton').addEventListener('click', startGame);
+
+function startGame() {
+  document.getElementById('instructions').style.display = 'none';
+  document.querySelector('.cannon').style.display = 'block';
+  document.getElementById('question').style.display = 'block';
+  document.getElementById('score').style.display = 'block';
+  document.getElementById('ammo').style.display = 'block';
+  document.querySelector('.controls').style.display = 'flex';
+  gameStarted = true;
+  generateQuestion();
+}
+
+function showMessage(text) {
+  messageEl.textContent = text;
+  messageEl.style.display = 'block';
+  setTimeout(() => {
+    messageEl.style.display = 'none';
+  }, 2000);
+}
+
+function generateQuestion() {
+  const num1 = Math.floor(Math.random() * 90) + 10;
+  const num2 = Math.floor(Math.random() * 90) + 10;
+  correctAnswer = num1 * num2;
+  document.getElementById('question').textContent = `${num1} × ${num2} = ?`;
+  ammo = 2;
+  document.getElementById('ammo').textContent = `Ammo: ${ammo}`;
+  createBalloons();
+}
+
+function createBalloons() {
+  balloons.forEach(b => document.body.removeChild(b.element));
+  balloons = [];
+
+  let wrongAnswer1 = correctAnswer + Math.floor(Math.random() * 100) - 50;
+  let wrongAnswer2 = correctAnswer + Math.floor(Math.random() * 100) - 50;
+  
+  while(wrongAnswer1 === correctAnswer) wrongAnswer1 = correctAnswer + Math.floor(Math.random() * 100) - 50;
+  while(wrongAnswer2 === correctAnswer || wrongAnswer2 === wrongAnswer1) wrongAnswer2 = correctAnswer + Math.floor(Math.random() * 100) - 50;
+
+  const answers = [correctAnswer, wrongAnswer1, wrongAnswer2];
+  shuffleArray(answers);
+
+  const screenWidth = window.innerWidth;
+  const spacing = screenWidth / 4;
+
+  answers.forEach((answer, index) => {
+    const balloon = document.createElement('div');
+    balloon.className = 'balloon';
+    balloon.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+    balloon.style.left = `${spacing + index * spacing}px`;
+    balloon.style.top = `${100 + Math.random() * 200}px`;
+    balloon.textContent = answer;
+    balloon.style.animationDelay = `-${Math.random() * 8}s`;
+    balloon.style.animationDuration = `${7 + Math.random() * 2}s`;
+    document.body.appendChild(balloon);
+    
+    balloons.push({
+      element: balloon,
+      answer: answer,
+      x: spacing + index * spacing,
+      y: 100 + Math.random() * 200
+    });
+  });
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!gameStarted) return;
+  
+  const cannonEl = document.querySelector('.cannon');
+  const currentLeft = parseInt(window.getComputedStyle(cannonEl).left);
+  
+  if (e.key === 'ArrowLeft') {
+    const newLeft = Math.max(currentLeft - 10, 30);
+    cannonEl.style.left = `${newLeft}px`;
+  } else if (e.key === 'ArrowRight') {
+    const newLeft = Math.min(currentLeft + 10, window.innerWidth - 90);
+    cannonEl.style.left = `${newLeft}px`;
+  } else if (e.key === ' ' && canShoot && ammo > 0) {
+    shoot();
+  }
+});
+
+function shoot() {
+  if (ammo <= 0) return;
+  
+  ammo--;
+  document.getElementById('ammo').textContent = `Ammo: ${ammo}`;
+  
+  const bullet = document.createElement('div');
+  bullet.className = 'bullet';
+  document.body.appendChild(bullet);
+  
+  const cannonPos = document.querySelector('.cannon').getBoundingClientRect();
+  const startX = cannonPos.left + 30;
+  const startY = cannonPos.bottom - 40;
+  
+  const velocityX = 0;
+  const velocityY = -15;
+  
+  let bulletX = startX;
+  let bulletY = startY;
+  
+  const bulletObj = {
+    element: bullet,
+    x: bulletX,
+    y: bulletY,
+    vx: velocityX,
+    vy: velocityY
+  };
+  
+  bullet.style.left = bulletX + 'px';
+  bullet.style.top = bulletY + 'px';
+  
+  activeBullets.push(bulletObj);
+}
+
+function updateBullets() {
+  for (let i = activeBullets.length - 1; i >= 0; i--) {
+    const bullet = activeBullets[i];
+    bullet.y += bullet.vy;
+    
+    bullet.element.style.left = bullet.x + 'px';
+    bullet.element.style.top = bullet.y + 'px';
+    
+    for (let j = balloons.length - 1; j >= 0; j--) {
+      const balloon = balloons[j];
+      const balloonRect = balloon.element.getBoundingClientRect();
+      const bulletRect = bullet.element.getBoundingClientRect();
+      
+      if (checkCollision(bulletRect, balloonRect)) {
+        popSound.currentTime = 0;
+        popSound.play();
+        if (balloon.answer === correctAnswer) {
+          score += 10;
+          document.getElementById('score').textContent = `Score: ${score}`;
+          document.body.removeChild(bullet.element);
+          activeBullets.splice(i, 1);
+          nextQuestion();
+          return;
+        } else {
+          showMessage(`答案錯誤! 還剩下 ${ammo} 次機會`);
+          document.body.removeChild(bullet.element);
+          activeBullets.splice(i, 1);
+          if (ammo === 0) {
+            nextQuestion();
+          }
+          return;
+        }
+      }
+    }
+    
+    if (bullet.y < -10) {
+      document.body.removeChild(bullet.element);
+      activeBullets.splice(i, 1);
+      if (ammo === 0) {
+        showMessage("機會用完了!");
+        setTimeout(() => {
+          nextQuestion();
+        }, 1000);
+      } else {
+        showMessage(`射偏了! 還剩下 ${ammo} 次機會`);
+      }
+    }
+  }
+}
+
+function checkCollision(rect1, rect2) {
+  return !(rect1.right < rect2.left || 
+           rect1.left > rect2.right || 
+           rect1.bottom < rect2.top || 
+           rect1.top > rect2.bottom);
+}
+
+function nextQuestion() {
+  activeBullets.forEach(bullet => document.body.removeChild(bullet.element));
+  activeBullets = [];
+  
+  currentQuestion++;
+  if (currentQuestion <= 10) {
+    generateQuestion();
+  } else {
+    alert(`遊戲結束! 最終得分: ${score}`);
+    location.reload();
+  }
+}
+
+function gameLoop() {
+  if (gameStarted) {
+    updateBullets();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+// Modify the existing script to handle touch controls
+let touchInterval = null;
+
+function handleMobileControls() {
+  const leftBtn = document.getElementById('leftBtn');
+  const rightBtn = document.getElementById('rightBtn');
+  const fireBtn = document.getElementById('fireBtn');
+  
+  function moveLeft() {
+    if (!gameStarted) return;
+    const cannonEl = document.querySelector('.cannon');
+    const currentLeft = parseInt(window.getComputedStyle(cannonEl).left);
+    const newLeft = Math.max(currentLeft - 10, 30);
+    cannonEl.style.left = `${newLeft}px`;
+  }
+  
+  function moveRight() {
+    if (!gameStarted) return;
+    const cannonEl = document.querySelector('.cannon');
+    const currentLeft = parseInt(window.getComputedStyle(cannonEl).left);
+    const newLeft = Math.min(currentLeft + 10, window.innerWidth - 90);
+    cannonEl.style.left = `${newLeft}px`;
+  }
+  
+  // Touch events for continuous movement
+  leftBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchInterval = setInterval(moveLeft, 50);
+  });
+  
+  rightBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchInterval = setInterval(moveRight, 50);
+  });
+  
+  leftBtn.addEventListener('touchend', () => {
+    clearInterval(touchInterval);
+  });
+  
+  rightBtn.addEventListener('touchend', () => {
+    clearInterval(touchInterval);
+  });
+  
+  // Mouse events for desktop testing
+  leftBtn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    touchInterval = setInterval(moveLeft, 50);
+  });
+  
+  rightBtn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    touchInterval = setInterval(moveRight, 50);
+  });
+  
+  leftBtn.addEventListener('mouseup', () => {
+    clearInterval(touchInterval);
+  });
+  
+  rightBtn.addEventListener('mouseup', () => {
+    clearInterval(touchInterval);
+  });
+  
+  // Fire button
+  fireBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (gameStarted && canShoot && ammo > 0) {
+      shoot();
+    }
+  });
+}
+
+// Call the function to initialize mobile controls
+handleMobileControls();
+
+gameLoop();
+</script>
+</body></html>
